@@ -1,0 +1,5 @@
+*.wav
+JuceLibraryCode
+build
+Builds
+.vscode
