@@ -5,6 +5,11 @@
   <MAINGROUP id="CyJ3w3" name="GenMusic">
     <GROUP id="{907D5FCD-8BE5-ACFE-917D-4FE40B2F7B91}" name="Source">
       <FILE id="N8hcPe" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
+      <FILE id="NIBYRX" name="Notes.h" compile="0" resource="0" file="Source/Notes.h"/>
+      <FILE id="LqKWwh" name="Song.cpp" compile="1" resource="0" file="Source/Song.cpp"/>
+      <FILE id="XWiGLZ" name="Song.h" compile="0" resource="0" file="Source/Song.h"/>
+      <FILE id="pwGVOb" name="Track.cpp" compile="1" resource="0" file="Source/Track.cpp"/>
+      <FILE id="uiO3NA" name="Track.h" compile="0" resource="0" file="Source/Track.h"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>

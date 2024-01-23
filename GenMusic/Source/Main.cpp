@@ -1,6 +1,9 @@
 #include <JuceHeader.h>
 #include <iostream>
 #include <sstream>
+#include "Notes.h"
+#include "Track.h"
+#include "Song.h"
 
 template<typename T>
 void log(const T& value) {
@@ -102,73 +105,37 @@ private:
 };
 
 
-
-
-int main() {
+int main(int argc, char *argv[]) {
     
-    // Create a Synthesiser and add your custom voice
+    const double bpm = 60;
+    const double sampleRate = 44100.0;
+    
+    // Create a Synthesiser for the custom sample
     juce::Synthesiser synth;
-    synth.setCurrentPlaybackSampleRate(44100.0 ); // Set to the desired sample rate, e.g., 44100 Hz
+    synth.setCurrentPlaybackSampleRate(sampleRate); // Set to the desired sample rate, e.g., 44100 Hz
     synth.setNoteStealingEnabled(true);
     for (int i = 0; i < 4; ++i) {
+        // 4 potential notes played at once
         synth.addVoice(new SampleVoice("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C2.mp3", 48));
     }
     synth.addSound(new DefaultSynthSound());
     
-    const double bpm = 120.0;
-    const double sampleRate = 44100.0;
-    const double quarterNoteLengthInSamples = (60.0 / bpm) * sampleRate;
+   
+    auto song = std::make_unique<Song>(Song(bpm, sampleRate));
     
-    // Create a MIDI sequence
-    juce::MidiMessageSequence mySequence;
-    mySequence.addEvent(juce::MidiMessage::noteOn(1, 48, 0.8f), 0);
-    mySequence.addEvent(juce::MidiMessage::noteOff(1, 48), quarterNoteLengthInSamples*3 );
-    mySequence.addEvent(juce::MidiMessage::noteOn(1, 52, 0.8f), quarterNoteLengthInSamples * 2);
-    mySequence.addEvent(juce::MidiMessage::noteOff(1, 52), quarterNoteLengthInSamples * 10);
-    mySequence.updateMatchedPairs();
-    // Repeat for the other notes
-    
-    juce::MidiBuffer midiBuffer;
+    auto track1 = std::make_unique<Track>(Track(song.get(), &synth));
 
-    for (int i = 0; i < mySequence.getNumEvents(); ++i) {
-        auto* midiEvent = mySequence.getEventPointer(i);
-        int sampleNumber = (int)(midiEvent->message.getTimeStamp()); // Assuming 44100 Hz sample rate
-        log(sampleNumber, "sample number");
-        midiBuffer.addEvent(midiEvent->message, sampleNumber);
-    }
+    // first number is note pitch, second is start in beats, last is duration of note
+    track1->addNote(Note(57, 0.0, 1.0));
+    track1->addNote(Note(40, 1.0, 2.0));
+    track1->addNote(Note(48, 3.0, 1.5));
+    track1->addNote(Note(43, 4.5, 3.0));
     
+    song->addTrack(track1.get());
     
-    // Set up an AudioBuffer to render to
-    juce::AudioBuffer<float> buffer;
-    buffer.clear();
-    buffer.setSize(2, 44100 * 10); // Stereo buffer, 6 seconds long
-    log(buffer.getNumSamples(), buffer.getNumChannels(), mySequence.getEndTime(), "samples/channels");
-    
-    // Convert the sequence to a MidiBuffer...
-    synth.renderNextBlock(buffer, midiBuffer, 0, buffer.getNumSamples());
-    
-    // Write to a WAV file
     juce::File outputFile("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/output.wav");
-    if (outputFile.exists()) {
-        outputFile.deleteFile();
-    }
-    auto* outputStream = new juce::FileOutputStream(outputFile);
     
-    if (outputStream->failedToOpen())
-    {
-        delete outputStream;
-        return 1;
-    }
-    
-    juce::WavAudioFormat wavFormat;
-    std::unique_ptr<juce::AudioFormatWriter> writer(wavFormat.createWriterFor(outputStream, 44100, buffer.getNumChannels(), 16, {}, 0));
-    if (writer != nullptr) {
-        writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples());
-    }
-    else {
-        delete outputStream;
-    }
-    
+    song->renderToFile(outputFile);
     
     return 0;
 }
