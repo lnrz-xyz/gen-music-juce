@@ -37,5 +37,5 @@ void Track::render(juce::AudioBuffer<float>& buffer) {
 }
 
 double Track::getTotalTime() {
-    return 20.0;
+    return 60.0;
 }

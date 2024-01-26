@@ -32,3 +32,23 @@ std::vector<T> getSlice(const std::vector<T>& v, int start, int end) {
 
     return slice;
 }
+
+
+template <typename T>
+T selectWeightedRandom(const std::vector<std::pair<T, int>>& items, int randomNumber) {
+    int totalWeight = 0;
+    for (const auto& item : items) {
+        totalWeight += item.second;
+    }
+
+    // Truncate the random number if it's out of range
+    randomNumber = randomNumber % totalWeight;
+
+    for (const auto& item : items) {
+        if (randomNumber < item.second)
+            return item.first;
+        randomNumber -= item.second;
+    }
+
+    throw std::runtime_error("Error in selectWeightedRandom: Item selection failed.");
+}

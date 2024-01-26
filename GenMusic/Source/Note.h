@@ -41,8 +41,6 @@ public:
         double startTimeInSeconds = startTimeInBeats * (60.0 / bpm);
         double durationInSeconds = durationInBeats * (60.0 / bpm);
         
-        fmt::println("stard/end {} {}", startTimeInSeconds, durationInSeconds);
-        
         auto startSample = static_cast<int>(startTimeInSeconds * sampleRate);
         auto endSample = startSample + static_cast<int>(durationInSeconds * sampleRate);
         
@@ -55,7 +53,7 @@ public:
     
     Chord toChord(std::vector<int> intervals);
     
-    int getNoteNumber() {
+    int getNoteNumber() const {
         return midiNoteNumber;
     }
     

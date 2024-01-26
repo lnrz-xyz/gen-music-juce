@@ -19,6 +19,8 @@ public:
     bool appliesToChannel (int /*midiChannel*/) override { return true; }
 };
 
+
+// TODO take in more than one sample and find the nearest sample for any given note to pull from
 class SampleVoice : public juce::SynthesiserVoice {
 public:
     SampleVoice(const std::string& samplePath, int midiNoteForSample, int identifier)
@@ -44,8 +46,6 @@ public:
     }
     
     void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound* sound, int currentPitchWheelPosition) override {
-        // Implement this method based on your specific requirements
-        
         // Calculate the pitch shift ratio
         pitchRatio = std::pow(2.0, (midiNoteNumber - rootMidiNote) / 12.0);
         stretcher->reset();
@@ -55,6 +55,16 @@ public:
     
     void stopNote(float velocity, bool allowTailOff) override {
         isActive = false;
+    
+        // use velocity to slightly hang over if the sample needs it
+        
+        if (!allowTailOff) {
+            clearCurrentNote();
+        }
+        
+        // TODO tailoff
+        
+        
     }
     
     void renderNextBlock(juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples) override {
@@ -63,7 +73,7 @@ public:
         }
         stretcher->setPitchScale(pitchRatio);
         
-        const int chunkSize = 256; // Or another suitable size for your application
+        const int chunkSize = 256;
         int processedSamples = 0;
         
         while (processedSamples < numSamples) {
@@ -108,7 +118,7 @@ public:
         
         
         if (audioSampleBufferIndex >= audioSampleBuffer.getNumSamples()) {
-            stopNote(0.0f, false); // Automatically stop the note if we've reached the end of the sample
+            stopNote(0.0f, true); // Automatically stop the note if we've reached the end of the sample
         }
     }
     
