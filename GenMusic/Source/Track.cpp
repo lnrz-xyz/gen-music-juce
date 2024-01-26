@@ -11,8 +11,9 @@
 
 #include "Track.h"
 #include "Song.h"
-#include "Notes.h"
+#include "Note.h"
 #include <JuceHeader.h>
+#include "Utilities.h"
 
 void Track::addNote(const Note& note) {
     juce::MidiMessageSequence sequence = note.toMidiSequence(song->getBPM(), song->getSampleRate());
@@ -36,5 +37,5 @@ void Track::render(juce::AudioBuffer<float>& buffer) {
 }
 
 double Track::getTotalTime() {
-    return 8.0;
+    return 20.0;
 }

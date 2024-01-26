@@ -1,5 +1,5 @@
 #pragma once
-#include "Notes.h"
+#include "Note.h"
 #include <vector>
 
 class Song; // Forward declaration

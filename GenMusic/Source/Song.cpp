@@ -46,7 +46,3 @@ void Song::renderToFile(const juce::File& outputFile) {
         }
     }
 }
-
-
-
-// ... and so on for other methods of Song
