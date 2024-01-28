@@ -39,6 +39,10 @@ public:
         
         stretcher = std::make_unique<RubberBand::RubberBandStretcher>(44100, 2,RubberBand::RubberBandStretcher::Option::OptionProcessRealTime + RubberBand::RubberBandStretcher::Option::OptionPitchHighConsistency + RubberBand::RubberBandStretcher::Option::OptionTransientsSmooth + RubberBand::RubberBandStretcher::Option::OptionPhaseIndependent + RubberBand::RubberBandStretcher::Option::OptionFormantPreserved + RubberBand::RubberBandStretcher::Option::OptionChannelsTogether + RubberBand::RubberBandStretcher::Option::OptionWindowShort + RubberBand::RubberBandStretcher::Option::OptionEngineFaster);
         
+        
+        reusableBuffer.setSize(reader->numChannels, 256);
+        
+        
     }
     bool canPlaySound(juce::SynthesiserSound* sound) override {
         auto result = dynamic_cast<DefaultSynthSound*>(sound) != nullptr;
@@ -50,15 +54,20 @@ public:
         pitchRatio = std::pow(2.0, (midiNoteNumber - rootMidiNote) / 12.0);
         stretcher->reset();
         audioSampleBufferIndex = 0;
+        // attack: seconds, decay: seconds, sustain: 0-1, release: seconds
+        envelope.setParameters({0.3, 0.7, 0.8, 1.0});
+        envelope.noteOn();
+        reusableBuffer.clear();
         isActive = true;
     }
     
     void stopNote(float velocity, bool allowTailOff) override {
         isActive = false;
-    
+        
         // use velocity to slightly hang over if the sample needs it
         
         if (!allowTailOff) {
+            envelope.noteOff();
             clearCurrentNote();
         }
         
@@ -80,24 +89,25 @@ public:
             int currentChunkSize = std::min(chunkSize, numSamples - processedSamples);
             
             if (audioSampleBufferIndex + currentChunkSize <= audioSampleBuffer.getNumSamples()) {
-                // Create a temporary buffer for the chunk
-                juce::AudioSampleBuffer tempBuffer(audioSampleBuffer.getNumChannels(), currentChunkSize);
+             
+                reusableBuffer.setSize(audioSampleBuffer.getNumChannels(), currentChunkSize);
                 for (int channel = 0; channel < audioSampleBuffer.getNumChannels(); ++channel) {
-                    tempBuffer.copyFrom(channel, 0, audioSampleBuffer, channel, audioSampleBufferIndex, currentChunkSize);
+                    reusableBuffer.copyFrom(channel, 0, audioSampleBuffer, channel, audioSampleBufferIndex, currentChunkSize);
                 }
                 
                 // Process the chunk
-                stretcher->process(tempBuffer.getArrayOfReadPointers(), currentChunkSize, false);
+                stretcher->process(reusableBuffer.getArrayOfReadPointers(), currentChunkSize, false);
                 audioSampleBufferIndex += currentChunkSize;
             } else {
                 // Remaining buffer
                 int remaining = audioSampleBuffer.getNumSamples() - audioSampleBufferIndex;
-                juce::AudioSampleBuffer tempBuffer(audioSampleBuffer.getNumChannels(), remaining);
+                
+                reusableBuffer.setSize(audioSampleBuffer.getNumChannels(), remaining);
                 for (int channel = 0; channel < audioSampleBuffer.getNumChannels(); ++channel) {
-                    tempBuffer.copyFrom(channel, 0, audioSampleBuffer, channel, audioSampleBufferIndex, remaining);
+                    reusableBuffer.copyFrom(channel, 0, audioSampleBuffer, channel, audioSampleBufferIndex, remaining);
                 }
                 
-                stretcher->process(tempBuffer.getArrayOfReadPointers(), remaining, true); // 'true' for the final chunk
+                stretcher->process(reusableBuffer.getArrayOfReadPointers(), remaining, true); // 'true' for the final chunk
                 audioSampleBufferIndex += remaining;
                 processedSamples += remaining;
                 break;
@@ -108,6 +118,15 @@ public:
                 int available = stretcher->available();
                 juce::AudioSampleBuffer processedBuffer(audioSampleBuffer.getNumChannels(), available);
                 stretcher->retrieve(processedBuffer.getArrayOfWritePointers(), available);
+                
+                for (int i = 0; i < available; ++i) {
+                    float envelopeValue = envelope.getNextSample(); // Get the current envelope value
+                    for (int channel = 0; channel < processedBuffer.getNumChannels(); ++channel) {
+                        float processedSample = processedBuffer.getSample(channel, i);
+                        processedBuffer.setSample(channel, i, processedSample * envelopeValue);
+                    }
+                }
+                
                 
                 for (int channel = 0; channel < processedBuffer.getNumChannels(); ++channel) {
                     outputBuffer.addFrom(channel, startSample + processedSamples, processedBuffer, channel, 0, available);
@@ -133,6 +152,7 @@ public:
     
 private:
     juce::AudioSampleBuffer audioSampleBuffer;
+    juce::AudioSampleBuffer reusableBuffer;
     int rootMidiNote;
     int identifier;
     double currentPosition;
@@ -140,5 +160,6 @@ private:
     bool isActive;
     int audioSampleBufferIndex = 0;
     std::unique_ptr<RubberBand::RubberBandStretcher> stretcher;
+    juce::ADSR envelope;
 };
 
