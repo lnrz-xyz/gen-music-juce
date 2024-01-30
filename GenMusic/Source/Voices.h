@@ -55,7 +55,7 @@ public:
         stretcher->reset();
         audioSampleBufferIndex = 0;
         // attack: seconds, decay: seconds, sustain: 0-1, release: seconds
-        envelope.setParameters({0.3, 0.7, 0.8, 1.0});
+        envelope.setParameters({0.1, 0.2, 0.5, 1.0});
         envelope.noteOn();
         reusableBuffer.clear();
         isActive = true;

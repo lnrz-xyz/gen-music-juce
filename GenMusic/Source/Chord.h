@@ -11,13 +11,14 @@
 #pragma once
 
 #include "Note.h"
+#include <fmt/core.h>
+#include <fmt/format.h>
 
 class Note;
 
 enum ChordQuality {
     Major, Minor, Diminished, Augmented, DominantSeventh, DominantThirteenth, MajorSeventh, MinorSeventh, HalfDiminishedSeventh, DiminishedSeventh, AugmentedSeventh, SusSecond, SusFourth, DominantSeventhSusFourth, DominantSeventhAltered, DominantThirteenthFlatNine, MinorMajorSeventh, MinorSixth
 };
-
 
 /*
     The following map contains the intervals for each chord quality. These represent the valid notes for each
@@ -33,12 +34,14 @@ const std::map<ChordQuality, std::vector<int>> noteChoicesForQuality = {
     {MinorSixth, {0, 3, 3, 5, 5, 7, 9, 10}},
     {SusFourth, {0, 5, 5, 7, 7, 10, 10, 12}},
     {DominantSeventhSusFourth, {0, 5, 5, 7, 7, 10, 10, 12}},
+    {Diminished, {0, 3, 3, 6, 6, 9, 9, 12}},
 };
 
 class Chord {
 public:
     
-    Chord(std::vector<Note> notes);
+    Chord(std::vector<Note> notes, ChordQuality quality);
+    Chord(Note note, ChordQuality quality, std::vector<int> intervals);
     
     void addNote(const Note& note) {
         notes.push_back(note);
@@ -52,12 +55,13 @@ public:
         return notes;
     }
     
-    ChordQuality getQuality() const;
+    ChordQuality getQuality() const { return quality; }
     
     std::vector<int> getNoteChoices() const {
-        return noteChoicesForQuality.at(getQuality());
+        return noteChoicesForQuality.at(quality);
     }
     
 private:
     std::vector<Note> notes;
+    ChordQuality quality;
 };

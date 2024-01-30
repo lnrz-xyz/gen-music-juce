@@ -29,12 +29,17 @@ class Chord;
 
 class Note {
 public:
+    
+    const int midiNoteNumber;
+    const double startTimeInBeats;
+    const double durationInBeats;
+    const float velocity;
+    
+    
     Note(int midiNoteNumber, double startTimeInBeats, double durationInBeats, float velocity = 0.8f)
     : midiNoteNumber(midiNoteNumber), startTimeInBeats(startTimeInBeats), durationInBeats(durationInBeats), velocity(velocity) {}
     Note(const std::string& noteName, double startTimeInBeats, double durationInBeats, float velocity = 0.8f)
-    : startTimeInBeats(startTimeInBeats), durationInBeats(durationInBeats), velocity(velocity) {
-        midiNoteNumber = noteNameToMidi(noteName);
-    }
+    : startTimeInBeats(startTimeInBeats), durationInBeats(durationInBeats), velocity(velocity), midiNoteNumber(noteNameToMidi(noteName)) {}
     
     juce::MidiMessageSequence toMidiSequence(double bpm, double sampleRate) const {
         
@@ -50,18 +55,7 @@ public:
         
         return sequence;
     }
-    
-    Chord toChord(std::vector<int> intervals);
-    
-    int getNoteNumber() const {
-        return midiNoteNumber;
-    }
-    
 private:
-    int midiNoteNumber;
-    double startTimeInBeats;
-    double durationInBeats;
-    float velocity;
     
     
     static int noteNameToMidi(const std::string& noteString) {

@@ -40,12 +40,3 @@ std::map<std::string, NoteName> stringToNoteMap = {
     {"a#", NoteName::ASharp},
     {"bb", NoteName::BFlat}, {"b", NoteName::B},
 };
-
-
-Chord Note::toChord(std::vector<int> intervals) {
-    std::vector<Note> notes = {Note(midiNoteNumber, startTimeInBeats, durationInBeats, velocity)};
-    for (const auto i : intervals) {
-        notes.push_back(Note(midiNoteNumber+i, startTimeInBeats, durationInBeats, velocity));
-    }
-    return Chord(notes);
-}
