@@ -16,6 +16,7 @@
 
 const double SAMPLE_RATE = 44100.0;
 const int BAR_COUNT = 4;
+const int BEATS_PER_BAR = 4.0;
 const int LOOPS = 2;
 
 // TODO use the valid notes defined in Chords.h
@@ -197,21 +198,21 @@ std::pair<int,std::vector<std::vector<double>>> generateMelodyRhythm(const std::
         currentBar.push_back(rhythmOption);
         
         // If the current bar is exactly 4.0 beats long, then add it to the rhythm and clear the current bar
-        const double totalSoFar = std::accumulate(currentBar.begin(), currentBar.end(), 0.0);
-        if (totalSoFar >= BAR_COUNT - hangOver) {
-            
-            if (totalSoFar > BAR_COUNT - hangOver) {
+        const double totalSoFar = std::accumulate(currentBar.begin(), currentBar.end(), 0.0) + hangOver;
+        if (totalSoFar >= BEATS_PER_BAR) {
+            if (totalSoFar > BEATS_PER_BAR) {
                 if (rhythm.size() + 1 == BAR_COUNT) {
                     // last note hangs over on the final bar, truncate it to be just enough to fill the 4 beats in the bar
-//                    fmt::println("last bar hangover, truncating");
+                    fmt::println("last bar hangover, truncating: {} ({})", totalSoFar, currentBar.back());
                     currentBar.back() = 4.0 - (totalSoFar - currentBar.back());
+                    fmt::println("new last note is {}", currentBar.back());
                 } else {
                     // if the current bar hangs over, we store the hangover so the next bar can start with it
                     hangOver = totalSoFar - BAR_COUNT;
-//                    fmt::println("hangover is {}", hangOver);
+                    fmt::println("hangover is {}", hangOver);
                 }
             } else {
-//                fmt:: println("no hangover");
+                fmt:: println("no hangover");
                 hangOver = 0.0;
             }
             
@@ -439,7 +440,7 @@ int main(int argc, char *argv[]) {
     if (argc > 1) {
         seed = generateRandomBytes(100, argv[1]);
     } else {
-        seed = generateRandomBytes(100, "ijiwjlakmsklnjniuwoaiwhpsiajpojnajbibawirbiuhbabhjsw");
+        seed = generateRandomBytes(100, "asolwijojnlksjankjn kcakjnwios");
     }
     
     int index = 0;
@@ -450,10 +451,10 @@ int main(int argc, char *argv[]) {
     juce::Synthesiser melodySynth;
     melodySynth.setCurrentPlaybackSampleRate(SAMPLE_RATE); // Set to the desired sample rate, e.g., 44100 Hz
     melodySynth.setNoteStealingEnabled(true);
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 4; ++i) {
         // 4 potential notes played at once
         // TODO the note parameter doesn't really work right
-        melodySynth.addVoice(new SampleVoice("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C4.mp3", 36, i));
+        melodySynth.addVoice(new SampleVoice("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/VIOLINGRAN-C4.mp3", 36, i, 1.0f));
     }
     melodySynth.addSound(new DefaultSynthSound());
     
@@ -462,7 +463,7 @@ int main(int argc, char *argv[]) {
     chordsSynth.setNoteStealingEnabled(true);
     for (int i = 0; i < 5; ++i) {
         // 4 potential notes played at once
-        chordsSynth.addVoice(new SampleVoice("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C2.mp3", 36, i));
+        chordsSynth.addVoice(new SampleVoice("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C2.mp3", 36, i, 1.0f));
     }
     chordsSynth.addSound(new DefaultSynthSound());
     
@@ -495,12 +496,14 @@ int main(int argc, char *argv[]) {
     // 4 because starting notes already used 4 bytes
     const auto melody = generateMelody(getSlice(seed, melodyRhythm.first + 4, seed.size()), chords, melodyRhythm.second, melodyStartingNotes, roots);
     
-    for (auto& chord : chords) {
-        chordTrack->addChord(chord);
-    }
     for (auto& note : melody) {
         melodyTrack->addNote(note);
     }
+    
+    for (auto& chord : chords) {
+        chordTrack->addChord(chord);
+    }
+    
     
     song->addTrack(melodyTrack.get());
     song->addTrack(chordTrack.get());

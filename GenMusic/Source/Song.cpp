@@ -22,7 +22,7 @@ double Song::getTotalTime() {
         double trackTime = track->getTotalTime(); // Assuming Track has a method to calculate its total time
         totalTime = std::max(totalTime, trackTime);
     }
-    return totalTime;
+    return 60.0;
 }
 
 void Song::renderToFile(const juce::File& outputFile) {

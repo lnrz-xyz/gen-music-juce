@@ -13,6 +13,8 @@
 #include <rubberband/RubberBandStretcher.h>
 #include <fmt/core.h>
 
+const int CHUNK_SIZE = 1024;
+
 class DefaultSynthSound : public juce::SynthesiserSound {
 public:
     bool appliesToNote (int /*midiNoteNumber*/) override { return true; }
@@ -23,9 +25,9 @@ public:
 // TODO take in more than one sample and find the nearest sample for any given note to pull from
 class SampleVoice : public juce::SynthesiserVoice {
 public:
-    SampleVoice(const std::string& samplePath, int midiNoteForSample, int identifier)
-    : rootMidiNote(midiNoteForSample), identifier(identifier), currentPosition(0),
-    isActive(false)
+    SampleVoice(const std::string& samplePath, int midiNoteForSample, int identifier, double gain = 0.8f)
+    : rootMidiNote(midiNoteForSample), identifier(identifier),
+    isActive(false), gain(gain)
     {
         juce::File file(samplePath);
         juce::AudioFormatManager formatManager;
@@ -37,10 +39,9 @@ public:
             reader->read(&audioSampleBuffer, 0, (int)reader->lengthInSamples, 0, true, true);
         }
         
-        stretcher = std::make_unique<RubberBand::RubberBandStretcher>(44100, 2,RubberBand::RubberBandStretcher::Option::OptionProcessRealTime + RubberBand::RubberBandStretcher::Option::OptionPitchHighConsistency + RubberBand::RubberBandStretcher::Option::OptionTransientsSmooth + RubberBand::RubberBandStretcher::Option::OptionPhaseIndependent + RubberBand::RubberBandStretcher::Option::OptionFormantPreserved + RubberBand::RubberBandStretcher::Option::OptionChannelsTogether + RubberBand::RubberBandStretcher::Option::OptionWindowShort + RubberBand::RubberBandStretcher::Option::OptionEngineFaster);
-        
-        
-        reusableBuffer.setSize(reader->numChannels, 256);
+        stretcher = std::make_unique<RubberBand::RubberBandStretcher>(44100, 2,RubberBand::RubberBandStretcher::Option::OptionProcessRealTime + RubberBand::RubberBandStretcher::Option::OptionPitchHighQuality +
+        + RubberBand::RubberBandStretcher::Option::OptionFormantShifted + RubberBand::RubberBandStretcher::Option::OptionChannelsApart + RubberBand::RubberBandStretcher::Option::OptionEngineFiner + RubberBand::RubberBandStretcher::Option::OptionWindowStandard + RubberBand::RubberBandStretcher::Option::OptionThreadingAuto);
+    
         
         
     }
@@ -54,42 +55,41 @@ public:
         pitchRatio = std::pow(2.0, (midiNoteNumber - rootMidiNote) / 12.0);
         stretcher->reset();
         audioSampleBufferIndex = 0;
+        reusableBuffer.clear();
         // attack: seconds, decay: seconds, sustain: 0-1, release: seconds
         envelope.setParameters({0.1, 0.2, 0.5, 1.0});
         envelope.noteOn();
-        reusableBuffer.clear();
         isActive = true;
+        fmt::print("Note: {} {}\n", midiNoteNumber, identifier);
     }
     
     void stopNote(float velocity, bool allowTailOff) override {
+        fmt::print("Releasing with tail\n");
         isActive = false;
-        
-        // use velocity to slightly hang over if the sample needs it
         
         if (!allowTailOff) {
             envelope.noteOff();
             clearCurrentNote();
         }
-        
-        // TODO tailoff
-        
-        
     }
+
     
     void renderNextBlock(juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples) override {
         if (!isActive) {
+            fmt::print("Returning early\n");
             return;
         }
         stretcher->setPitchScale(pitchRatio);
         
-        const int chunkSize = 256;
+        // TODO stretcher delay compression
         int processedSamples = 0;
         
         while (processedSamples < numSamples) {
+            const int chunkSize = stretcher->getSamplesRequired();
             int currentChunkSize = std::min(chunkSize, numSamples - processedSamples);
             
             if (audioSampleBufferIndex + currentChunkSize <= audioSampleBuffer.getNumSamples()) {
-             
+                
                 reusableBuffer.setSize(audioSampleBuffer.getNumChannels(), currentChunkSize);
                 for (int channel = 0; channel < audioSampleBuffer.getNumChannels(); ++channel) {
                     reusableBuffer.copyFrom(channel, 0, audioSampleBuffer, channel, audioSampleBufferIndex, currentChunkSize);
@@ -122,7 +122,7 @@ public:
                 for (int i = 0; i < available; ++i) {
                     float envelopeValue = envelope.getNextSample(); // Get the current envelope value
                     for (int channel = 0; channel < processedBuffer.getNumChannels(); ++channel) {
-                        float processedSample = processedBuffer.getSample(channel, i);
+                        float processedSample = processedBuffer.getSample(channel, i) * gain;
                         processedBuffer.setSample(channel, i, processedSample * envelopeValue);
                     }
                 }
@@ -135,12 +135,10 @@ public:
             }
         }
         
-        
         if (audioSampleBufferIndex >= audioSampleBuffer.getNumSamples()) {
             stopNote(0.0f, true); // Automatically stop the note if we've reached the end of the sample
         }
     }
-    
     
     void pitchWheelMoved(int newValue) override {
         // Handle pitch wheel changes if needed
@@ -150,16 +148,29 @@ public:
         // Handle other MIDI controllers if needed
     }
     
+    void setGain(float newGain) {
+        gain = newGain;
+    }
+    
 private:
+    // sample buffers
     juce::AudioSampleBuffer audioSampleBuffer;
     juce::AudioSampleBuffer reusableBuffer;
+    
+    
+    // midi
     int rootMidiNote;
+    
     int identifier;
-    double currentPosition;
+    
+    // processing variables
     double pitchRatio;
     bool isActive;
     int audioSampleBufferIndex = 0;
     std::unique_ptr<RubberBand::RubberBandStretcher> stretcher;
+    
+    // mix, envelope, effects
+    float gain;
     juce::ADSR envelope;
 };
 

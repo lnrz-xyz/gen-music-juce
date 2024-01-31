@@ -40,7 +40,7 @@ const std::map<ChordQuality, std::vector<int>> noteChoicesForQuality = {
 class Chord {
 public:
     
-    Chord(std::vector<Note> notes, ChordQuality quality);
+    Chord(std::vector<Note> newNotes, ChordQuality quality) : notes(newNotes), quality(quality) {}
     Chord(Note note, ChordQuality quality, std::vector<int> intervals);
     
     void addNote(const Note& note) {

@@ -30,10 +30,6 @@ void Chord::addNotes(std::vector<Note> newNotes) {
 }
 
 
-Chord::Chord(std::vector<Note> newNotes, ChordQuality quality) : quality(quality) {
-    addNotes(newNotes);
-}
-
 Chord::Chord(Note note, ChordQuality quality, std::vector<int> intervals) : quality(quality) {
     std::vector<Note> newNotes = {note};
     for (const auto i : intervals) {
