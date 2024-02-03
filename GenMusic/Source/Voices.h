@@ -12,6 +12,7 @@
 #include <JuceHeader.h>
 #include <rubberband/RubberBandStretcher.h>
 #include <fmt/core.h>
+#include "SampleProcessor.h"
 
 const int CHUNK_SIZE = 1024;
 
@@ -25,25 +26,10 @@ public:
 // TODO take in more than one sample and find the nearest sample for any given note to pull from
 class SampleVoice : public juce::SynthesiserVoice {
 public:
-    SampleVoice(const std::string& samplePath, int midiNoteForSample, int identifier, double gain = 0.8f)
-    : rootMidiNote(midiNoteForSample), identifier(identifier),
-    isActive(false), gain(gain)
-    {
-        juce::File file(samplePath);
-        juce::AudioFormatManager formatManager;
-        formatManager.registerBasicFormats();
-        std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
-        
-        if (reader.get() != nullptr) {
-            audioSampleBuffer.setSize((int)reader->numChannels, (int)reader->lengthInSamples);
-            reader->read(&audioSampleBuffer, 0, (int)reader->lengthInSamples, 0, true, true);
-        }
-        
-        stretcher = std::make_unique<RubberBand::RubberBandStretcher>(44100, 2,RubberBand::RubberBandStretcher::Option::OptionProcessRealTime + RubberBand::RubberBandStretcher::Option::OptionPitchHighQuality +
-        + RubberBand::RubberBandStretcher::Option::OptionFormantShifted + RubberBand::RubberBandStretcher::Option::OptionChannelsApart + RubberBand::RubberBandStretcher::Option::OptionEngineFiner + RubberBand::RubberBandStretcher::Option::OptionWindowStandard + RubberBand::RubberBandStretcher::Option::OptionThreadingAuto);
-    
-        
-        
+    SampleVoice(std::shared_ptr<SampleProcessor> samples, int identifier, float startGain = 0.8f): identifier(identifier), sampleProcessor(samples) {
+        envelope.setSampleRate(44100);
+        setCurrentPlaybackSampleRate(44100);
+        gain.setGainLinear(startGain);
     }
     bool canPlaySound(juce::SynthesiserSound* sound) override {
         auto result = dynamic_cast<DefaultSynthSound*>(sound) != nullptr;
@@ -51,91 +37,60 @@ public:
     }
     
     void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound* sound, int currentPitchWheelPosition) override {
-        // Calculate the pitch shift ratio
-        pitchRatio = std::pow(2.0, (midiNoteNumber - rootMidiNote) / 12.0);
-        stretcher->reset();
+        midiNote = midiNoteNumber;
+        audioSampleBuffer = sampleProcessor->getAudioForNoteNumber(midiNote);
         audioSampleBufferIndex = 0;
-        reusableBuffer.clear();
+        fmt::print("Starting note {} {} {} {}\n", midiNote, audioSampleBuffer.getNumSamples(), isVoiceActive(),identifier);
         // attack: seconds, decay: seconds, sustain: 0-1, release: seconds
-        envelope.setParameters({0.1, 0.2, 0.5, 1.0});
+        envelope.setParameters({0.1, 0.2, 0.5, 0.2});
         envelope.noteOn();
-        isActive = true;
-        fmt::print("Note: {} {}\n", midiNoteNumber, identifier);
     }
     
     void stopNote(float velocity, bool allowTailOff) override {
-        fmt::print("Releasing with tail\n");
-        isActive = false;
-        
-        if (!allowTailOff) {
-            envelope.noteOff();
-            clearCurrentNote();
+        fmt::print("Stopping note {} {} {} {} {}\n", midiNote, audioSampleBufferIndex, isVoiceActive(), allowTailOff, identifier);
+        if (envelope.isActive()) {
+            envelope.noteOff(); // Start the release phase
+        } else {
+            fmt::print("Stopping note immediately {} {} {}\n", midiNote, isVoiceActive(), identifier);
+            clearCurrentNote(); // Immediate stop
         }
+        
     }
 
-    
     void renderNextBlock(juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples) override {
-        if (!isActive) {
-            fmt::print("Returning early\n");
+        if (!isVoiceActive()) {
+            fmt::print("Returning early {} {}\n", midiNote, identifier);
             return;
         }
-        stretcher->setPitchScale(pitchRatio);
         
-        // TODO stretcher delay compression
-        int processedSamples = 0;
-        
-        while (processedSamples < numSamples) {
-            const int chunkSize = stretcher->getSamplesRequired();
-            int currentChunkSize = std::min(chunkSize, numSamples - processedSamples);
+        int processSize = std::min(numSamples, audioSampleBuffer.getNumSamples() - audioSampleBufferIndex);
+        fmt::print("Rendering block {} {} {} {}\n", midiNote, startSample, audioSampleBufferIndex, processSize);
+        if (processSize > 0) {
+            juce::AudioBuffer<float> copyBuffer;
+            copyBuffer.setSize(audioSampleBuffer.getNumChannels(), processSize, false, true, false);
             
-            if (audioSampleBufferIndex + currentChunkSize <= audioSampleBuffer.getNumSamples()) {
-                
-                reusableBuffer.setSize(audioSampleBuffer.getNumChannels(), currentChunkSize);
-                for (int channel = 0; channel < audioSampleBuffer.getNumChannels(); ++channel) {
-                    reusableBuffer.copyFrom(channel, 0, audioSampleBuffer, channel, audioSampleBufferIndex, currentChunkSize);
-                }
-                
-                // Process the chunk
-                stretcher->process(reusableBuffer.getArrayOfReadPointers(), currentChunkSize, false);
-                audioSampleBufferIndex += currentChunkSize;
-            } else {
-                // Remaining buffer
-                int remaining = audioSampleBuffer.getNumSamples() - audioSampleBufferIndex;
-                
-                reusableBuffer.setSize(audioSampleBuffer.getNumChannels(), remaining);
-                for (int channel = 0; channel < audioSampleBuffer.getNumChannels(); ++channel) {
-                    reusableBuffer.copyFrom(channel, 0, audioSampleBuffer, channel, audioSampleBufferIndex, remaining);
-                }
-                
-                stretcher->process(reusableBuffer.getArrayOfReadPointers(), remaining, true); // 'true' for the final chunk
-                audioSampleBufferIndex += remaining;
-                processedSamples += remaining;
-                break;
+            for (int channel = 0; channel < audioSampleBuffer.getNumChannels(); ++channel) {
+                copyBuffer.copyFrom(channel, 0, audioSampleBuffer, channel, audioSampleBufferIndex, processSize);
             }
             
-            // Retrieve and mix the processed data
-            while (stretcher->available() > 0) {
-                int available = stretcher->available();
-                juce::AudioSampleBuffer processedBuffer(audioSampleBuffer.getNumChannels(), available);
-                stretcher->retrieve(processedBuffer.getArrayOfWritePointers(), available);
-                
-                for (int i = 0; i < available; ++i) {
-                    float envelopeValue = envelope.getNextSample(); // Get the current envelope value
-                    for (int channel = 0; channel < processedBuffer.getNumChannels(); ++channel) {
-                        float processedSample = processedBuffer.getSample(channel, i) * gain;
-                        processedBuffer.setSample(channel, i, processedSample * envelopeValue);
-                    }
-                }
-                
-                
-                for (int channel = 0; channel < processedBuffer.getNumChannels(); ++channel) {
-                    outputBuffer.addFrom(channel, startSample + processedSamples, processedBuffer, channel, 0, available);
-                }
-                processedSamples += available;
+            juce::dsp::AudioBlock<float> audioBlock { copyBuffer };
+            gain.process(juce::dsp::ProcessContextReplacing<float> (audioBlock));
+            envelope.applyEnvelopeToBuffer(copyBuffer, 0, copyBuffer.getNumSamples());
+            
+            for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel) {
+                outputBuffer.addFrom(channel, startSample, copyBuffer, channel, 0, processSize);
             }
+            
+            audioSampleBufferIndex += processSize;
         }
-        
+
+        if (!envelope.isActive()) {
+            fmt::print("Envelope is inactive {} {}\n", midiNote, identifier);
+            clearCurrentNote();
+        }
+
         if (audioSampleBufferIndex >= audioSampleBuffer.getNumSamples()) {
+            fmt::print("Sample ending for note {} {}\n", midiNote, identifier);
             stopNote(0.0f, true); // Automatically stop the note if we've reached the end of the sample
         }
     }
@@ -149,28 +104,24 @@ public:
     }
     
     void setGain(float newGain) {
-        gain = newGain;
+        gain.setGainLinear(newGain);
     }
     
 private:
     // sample buffers
-    juce::AudioSampleBuffer audioSampleBuffer;
-    juce::AudioSampleBuffer reusableBuffer;
-    
+    juce::AudioBuffer<float> audioSampleBuffer;
+    juce::AudioBuffer<float> reusableCopyBuffer;
     
     // midi
-    int rootMidiNote;
-    
     int identifier;
     
     // processing variables
-    double pitchRatio;
-    bool isActive;
+    int midiNote = 0;
     int audioSampleBufferIndex = 0;
-    std::unique_ptr<RubberBand::RubberBandStretcher> stretcher;
     
     // mix, envelope, effects
-    float gain;
+    juce::dsp::Gain<float> gain;
     juce::ADSR envelope;
+    std::shared_ptr<SampleProcessor> sampleProcessor;
 };
 

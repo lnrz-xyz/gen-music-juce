@@ -22,13 +22,13 @@ double Song::getTotalTime() {
         double trackTime = track->getTotalTime(); // Assuming Track has a method to calculate its total time
         totalTime = std::max(totalTime, trackTime);
     }
-    return 60.0;
+    return totalTime + 1.0;
 }
 
 void Song::renderToFile(const juce::File& outputFile) {
     juce::AudioBuffer<float> buffer;
     buffer.setSize(2, static_cast<int>(sampleRate * getTotalTime())); // Stereo buffer
-    buffer.clear();
+    buffer.clear(); // Fill with silence
 
     for (auto* track : tracks) {
         track->render(buffer);
@@ -39,7 +39,8 @@ void Song::renderToFile(const juce::File& outputFile) {
     if (auto fileStream = std::make_unique<juce::FileOutputStream>(outputFile)) {
         if (!fileStream->failedToOpen()) {
             juce::WavAudioFormat wavFormat;
-            if (auto writer = std::unique_ptr<juce::AudioFormatWriter>(wavFormat.createWriterFor(fileStream.get(), sampleRate, buffer.getNumChannels(), 16, {}, 0))) {
+            
+            if (auto writer = std::unique_ptr<juce::AudioFormatWriter>(wavFormat.createWriterFor(fileStream.get(), sampleRate, buffer.getNumChannels(), 32, {}, 0))) {
                 writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples());
                 fileStream.release(); // prevent deletion of the stream as writer will handle it
             }

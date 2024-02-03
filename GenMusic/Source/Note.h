@@ -36,9 +36,9 @@ public:
     const float velocity;
     
     
-    Note(int midiNoteNumber, double startTimeInBeats, double durationInBeats, float velocity = 0.8f)
+    Note(int midiNoteNumber, double startTimeInBeats, double durationInBeats, float velocity = 0.5f)
     : midiNoteNumber(midiNoteNumber), startTimeInBeats(startTimeInBeats), durationInBeats(durationInBeats), velocity(velocity) {}
-    Note(const std::string& noteName, double startTimeInBeats, double durationInBeats, float velocity = 0.8f)
+    Note(const std::string& noteName, double startTimeInBeats, double durationInBeats, float velocity = 0.5f)
     : startTimeInBeats(startTimeInBeats), durationInBeats(durationInBeats), velocity(velocity), midiNoteNumber(noteNameToMidi(noteName)) {}
     
     juce::MidiMessageSequence toMidiSequence(double bpm, double sampleRate) const {
@@ -55,6 +55,7 @@ public:
         
         return sequence;
     }
+    
 private:
     
     

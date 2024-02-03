@@ -8,6 +8,7 @@
 #include "Track.h"
 #include "Song.h"
 #include "Voices.h"
+#include "SampleProcessor.h"
 #include "Utilities.h"
 #include <fmt/core.h>
 #include <fmt/ranges.h>
@@ -38,9 +39,9 @@ std::vector<int> generateRoots(const std::vector<unsigned char> seedForRoot, boo
             continue;
         }
         if (isMajor) {
-            resultIntervals.push_back(key + majorScaleIntervals[b % majorScaleIntervals.size()]);
+            resultIntervals.push_back(key + majorScaleIntervals[seedForRoot[b] % majorScaleIntervals.size()]);
         } else {
-            resultIntervals.push_back(key + minorScaleIntervals[b % minorScaleIntervals.size()]);
+            resultIntervals.push_back(key + minorScaleIntervals[seedForRoot[b] % minorScaleIntervals.size()]);
         }
     }
     
@@ -234,6 +235,7 @@ std::pair<int,std::vector<std::vector<double>>> generateMelodyRhythm(const std::
 std::vector<int> generateMelodyStartingNotes(const std::vector<unsigned char> seedForMelodyStartNotes, const std::vector<int> roots, const std::vector<Chord> chords, bool isMajor) {
     
     if (chords.size() != BAR_COUNT * LOOPS) {
+        fmt::println("chords size is {}", chords.size());
         throw std::runtime_error("chords must be BAR_COUNT * LOOPS in length");
     }
     
@@ -278,8 +280,6 @@ std::pair<int, int> nearestNotes(int note, int root, const std::vector<int>& not
     // Edge case: if no notes are found above or below
     if (nearestBelow == -1) nearestBelow = note; // Default to the note itself
     if (nearestAbove == 1000) nearestAbove = note; // Default to the note itself
-
-    fmt::println("nearest below is {}, nearest above is {}", nearestBelow, nearestAbove);
     return {nearestBelow, nearestAbove};
 }
 
@@ -404,7 +404,6 @@ std::vector<Note> generateMelody(const std::vector<unsigned char> seedForMelody,
                 melodyContext.lastInterval = melodyNoteMidiValues.at(j) - melodyNoteMidiValues.back();
             }
             
-            fmt::println("length: {}", melodyNoteMidiValues.size());
         }
     }
     
@@ -433,37 +432,84 @@ std::vector<Note> generateMelody(const std::vector<unsigned char> seedForMelody,
 }
 
 
-// TODO bugs: sample size can overflow, some big jumps in melodes, rhythms don't always wrap around correctly
+// TODO bugs: some big jumps in melodes, normalize the note ranges
 int main(int argc, char *argv[]) {
     
     std::vector<unsigned char> seed;
     if (argc > 1) {
         seed = generateRandomBytes(100, argv[1]);
     } else {
-        seed = generateRandomBytes(100, "asolwijojnlksjankjn kcakjnwios");
+        seed = generateRandomBytes(100, "benny");
     }
     
     int index = 0;
     
-    const double bpm = 60 + 4 * (seed[index++] % 16);
+    const double bpm = 80 + 4 * (seed[index++] % 16);
+    
+    const auto isMajor = static_cast<int>(seed[index++]) % 2 == 0;
+    
+    fmt::println("is major {}", isMajor);
+    
+    const auto rootStart = index++;
+    const auto rootEnd = index+=(BAR_COUNT);
+    const auto slice = std::vector<unsigned char>(seed.begin()+rootStart, seed.begin()+rootStart+4);
+    for (int i = 0; i<4; i++) {
+        fmt::print("{} ", slice[i]);
+    }
+    const auto roots = generateRoots(slice, isMajor);
+    
+    fmt::println("roots are {}", fmt::join(roots, ", "));
+    
+    const auto chords = generateChords(roots, isMajor);
+    
+    const auto melodyRhythm = generateMelodyRhythm(std::vector<unsigned char>(seed.begin()+index, seed.end()));
+    
+    fmt::println("index for seed is {}", melodyRhythm.first);
+    fmt::println("rhythm is {}", fmt::join(melodyRhythm.second, ", "));
+    
+    const auto melodyStartingNotes = generateMelodyStartingNotes(std::vector<unsigned char>(seed.begin()+ melodyRhythm.first, seed.begin()+melodyRhythm.first + 5), roots, chords, isMajor);
+    
+    fmt::println("melody starting notes: {}", fmt::join(melodyStartingNotes,", "));
+    
+    // 4 because starting notes already used 4 bytes
+    const auto melody = generateMelody(std::vector<unsigned char>(seed.begin()+melodyRhythm.first + 4, seed.end()), chords, melodyRhythm.second, melodyStartingNotes, roots);
+    
+    std::vector<Note> allMelodyNotes;
+    
+    for (const auto& note : melody) {
+        allMelodyNotes.push_back(note);
+    }
+    
+    std::vector<Note> allChordNotes;
+    
+    
+    for (const auto& chord: chords) {
+        for (const auto& note: chord.getNotes()) {
+            allChordNotes.push_back(note);
+        }
+    }
+    
+    std::shared_ptr<SampleProcessor> melodySampleProcessor = std::make_shared<SampleProcessor>("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C4.mp3", 36, allMelodyNotes);
+    
+    std::shared_ptr<SampleProcessor> chordSampleProcessor = std::make_shared<SampleProcessor>("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C2.mp3", 36, allChordNotes);
+    
     
     // Create a Synthesiser for the custom sample
     juce::Synthesiser melodySynth;
     melodySynth.setCurrentPlaybackSampleRate(SAMPLE_RATE); // Set to the desired sample rate, e.g., 44100 Hz
-    melodySynth.setNoteStealingEnabled(true);
     for (int i = 0; i < 4; ++i) {
         // 4 potential notes played at once
         // TODO the note parameter doesn't really work right
-        melodySynth.addVoice(new SampleVoice("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/VIOLINGRAN-C4.mp3", 36, i, 1.0f));
+        melodySynth.addVoice(new SampleVoice(melodySampleProcessor, i, 0.9f));
     }
     melodySynth.addSound(new DefaultSynthSound());
     
     juce::Synthesiser chordsSynth;
     chordsSynth.setCurrentPlaybackSampleRate(SAMPLE_RATE); // Set to the desired sample rate, e.g., 44100 Hz
     chordsSynth.setNoteStealingEnabled(true);
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         // 4 potential notes played at once
-        chordsSynth.addVoice(new SampleVoice("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C2.mp3", 36, i, 1.0f));
+        chordsSynth.addVoice(new SampleVoice(chordSampleProcessor, i, 0.7f));
     }
     chordsSynth.addSound(new DefaultSynthSound());
     
@@ -472,29 +518,6 @@ int main(int argc, char *argv[]) {
     
     const auto melodyTrack = std::make_unique<Track>(Track(song.get(), &melodySynth));
     const auto chordTrack = std::make_unique<Track>(Track(song.get(), &chordsSynth));
-    const auto isMajor = static_cast<int>(seed[index++]) % 2 == 0;
-    
-    fmt::println("is major {}", isMajor);
-    
-    const auto rootStart = index++;
-    const auto rootEnd = index+=(BAR_COUNT-1);
-    const auto roots = generateRoots(getSlice(seed, rootStart, rootEnd), isMajor);
-    
-    fmt::println("roots are {}", fmt::join(roots, ", "));
-    
-    const auto chords = generateChords(roots, isMajor);
-    
-    const auto melodyRhythm = generateMelodyRhythm(getSlice(seed, index, seed.size()));
-    
-    fmt::println("index for seed is {}", melodyRhythm.first);
-    fmt::println("rhythm is {}", fmt::join(melodyRhythm.second, ", "));
-    
-    const auto melodyStartingNotes = generateMelodyStartingNotes(getSlice(seed, melodyRhythm.first, melodyRhythm.first + 4), roots, chords, isMajor);
-    
-    fmt::println("melody starting notes: {}", fmt::join(melodyStartingNotes,", "));
-    
-    // 4 because starting notes already used 4 bytes
-    const auto melody = generateMelody(getSlice(seed, melodyRhythm.first + 4, seed.size()), chords, melodyRhythm.second, melodyStartingNotes, roots);
     
     for (auto& note : melody) {
         melodyTrack->addNote(note);
@@ -504,14 +527,13 @@ int main(int argc, char *argv[]) {
         chordTrack->addChord(chord);
     }
     
-    
     song->addTrack(melodyTrack.get());
     song->addTrack(chordTrack.get());
     
-    juce::File outputFile("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/output-v2.wav");
+    juce::File outputFile("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/output-v3.wav");
     
     song->renderToFile(outputFile);
-    
+//
     return 0;
 }
 

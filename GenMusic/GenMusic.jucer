@@ -4,6 +4,10 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
   <MAINGROUP id="CyJ3w3" name="GenMusic">
     <GROUP id="{907D5FCD-8BE5-ACFE-917D-4FE40B2F7B91}" name="Source">
+      <FILE id="qAwdQK" name="SampleProcessor.cpp" compile="1" resource="0"
+            file="Source/SampleProcessor.cpp"/>
+      <FILE id="ughOpe" name="SampleProcessor.h" compile="0" resource="0"
+            file="Source/SampleProcessor.h"/>
       <FILE id="NIBYRX" name="Note.h" compile="0" resource="0" file="Source/Note.h"/>
       <FILE id="L6nkDF" name="Chord.cpp" compile="1" resource="0" file="Source/Chord.cpp"/>
       <FILE id="RXFwsI" name="Chord.h" compile="0" resource="0" file="Source/Chord.h"/>
