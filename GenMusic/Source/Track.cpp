@@ -35,6 +35,11 @@ void Track::render(juce::AudioBuffer<float>& buffer) {
     }
     
     synth->renderNextBlock(buffer, midiBuffer, 0, buffer.getNumSamples());
+    if (processorChain) {
+        juce::dsp::AudioBlock<float> block(buffer);
+        juce::dsp::ProcessContextReplacing<float> context(block);
+        processorChain->process(context);
+    }
 }
 
 double Track::getTotalTime() {

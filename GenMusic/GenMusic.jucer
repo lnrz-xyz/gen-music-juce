@@ -4,6 +4,8 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
   <MAINGROUP id="CyJ3w3" name="GenMusic">
     <GROUP id="{907D5FCD-8BE5-ACFE-917D-4FE40B2F7B91}" name="Source">
+      <FILE id="TJSsfl" name="WidthProcessor.h" compile="0" resource="0"
+            file="Source/WidthProcessor.h"/>
       <FILE id="qAwdQK" name="SampleProcessor.cpp" compile="1" resource="0"
             file="Source/SampleProcessor.cpp"/>
       <FILE id="ughOpe" name="SampleProcessor.h" compile="0" resource="0"
