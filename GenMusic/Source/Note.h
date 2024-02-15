@@ -38,9 +38,6 @@ public:
     
     Note(int midiNoteNumber, double startTimeInBeats, double durationInBeats, float velocity = 0.5f)
     : midiNoteNumber(midiNoteNumber), startTimeInBeats(startTimeInBeats), durationInBeats(durationInBeats), velocity(velocity) {}
-    Note(const std::string& noteName, double startTimeInBeats, double durationInBeats, float velocity = 0.5f)
-    : startTimeInBeats(startTimeInBeats), durationInBeats(durationInBeats), velocity(velocity), midiNoteNumber(noteNameToMidi(noteName)) {}
-    
     juce::MidiMessageSequence toMidiSequence(double bpm, double sampleRate) const {
         
         double startTimeInSeconds = startTimeInBeats * (60.0 / bpm);
@@ -54,35 +51,6 @@ public:
         sequence.addEvent(juce::MidiMessage::noteOff(1, midiNoteNumber), endSample);
         
         return sequence;
-    }
-    
-private:
-    
-    
-    static int noteNameToMidi(const std::string& noteString) {
-        
-        std::string lowerCaseNoteString = noteString;
-        // Convert the string to lowercase
-        std::transform(lowerCaseNoteString.begin(), lowerCaseNoteString.end(), lowerCaseNoteString.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
-        
-        // Split the string into note name and octave
-        std::string noteName;
-        int octave = 0;
-        for (char c : lowerCaseNoteString) {
-            if (isdigit(c)) {
-                octave = octave * 10 + (c - '0'); // Convert character to digit and add to octave
-            } else {
-                noteName += c; // Append non-digit characters to noteName
-            }
-        }
-        
-        // Find the corresponding NoteName enum
-        NoteName noteEnumValue = stringToNoteMap[noteName];
-        
-        // Calculate and return the MIDI note number
-        int baseMidiValue = noteToMidiMap[noteEnumValue];
-        return baseMidiValue + octave * 12;
     }
     
 };

@@ -34,17 +34,7 @@ void Song::renderToFile(const juce::File& outputFile) {
     for (auto* track : tracks) {
         track->render(buffer);
     }
-    
-    const int maximumBlockSize = 1024;
-    if (processorChain) {
-        for (int startSample = 0; startSample < totalLength; startSample += maximumBlockSize) {
-            const int blockSize = std::min(maximumBlockSize, totalLength - startSample);
-            juce::dsp::AudioBlock<float> block(buffer.getArrayOfWritePointers(), buffer.getNumChannels(), startSample, blockSize);
-            juce::dsp::ProcessContextReplacing<float> context(block);
-            processorChain->process(context);
-        }
-    }
-    
+
     // File writing logic
     outputFile.deleteFile(); // Delete existing file, if any
     if (auto fileStream = std::make_unique<juce::FileOutputStream>(outputFile)) {

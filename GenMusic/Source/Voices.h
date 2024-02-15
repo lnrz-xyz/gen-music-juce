@@ -77,7 +77,7 @@ public:
             gain.process(juce::dsp::ProcessContextReplacing<float> (audioBlock));
             envelope.applyEnvelopeToBuffer(copyBuffer, 0, copyBuffer.getNumSamples());
             
-            for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel) {
+            for (int channel = 0; channel < copyBuffer.getNumChannels(); ++channel) {
                 outputBuffer.addFrom(channel, startSample, copyBuffer, channel, 0, processSize);
             }
             

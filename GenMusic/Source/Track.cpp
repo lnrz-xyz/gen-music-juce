@@ -27,6 +27,7 @@ void Track::addChord(const Chord& chord) {
 }
 
 void Track::render(juce::AudioBuffer<float>& buffer) {
+    const int totalLength = static_cast<int>(song->getSampleRate() * getTotalTime());
     juce::MidiBuffer midiBuffer;
     for (int i = 0; i < midiSequence.getNumEvents(); ++i) {
         auto* midiEvent = midiSequence.getEventPointer(i);
@@ -36,14 +37,18 @@ void Track::render(juce::AudioBuffer<float>& buffer) {
     
     synth->renderNextBlock(buffer, midiBuffer, 0, buffer.getNumSamples());
     if (processorChain) {
-        juce::dsp::AudioBlock<float> block(buffer);
-        juce::dsp::ProcessContextReplacing<float> context(block);
-        processorChain->process(context);
+        const int maximumBlockSize = 1024;
+        
+        for (int startSample = 0; startSample < totalLength; startSample += maximumBlockSize) {
+            const int blockSize = std::min(maximumBlockSize, totalLength - startSample);
+            juce::dsp::AudioBlock<float> block(buffer.getArrayOfWritePointers(), buffer.getNumChannels(), startSample, blockSize);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            processorChain->process(context);
+        }
     }
 }
 
 double Track::getTotalTime() {
-    double bmp = song->getBPM();
     double time = 0.0;
     // The event time stamps will be samples. Use sampleRate from song to convert to seconds.
     // The events could be in any order so keep track of the max.

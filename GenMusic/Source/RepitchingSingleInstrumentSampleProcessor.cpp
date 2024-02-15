@@ -1,13 +1,14 @@
 /*
- ==============================================================================
- 
- SampleProcessor.cpp
- Created: 2 Feb 2024 9:00:09pm
- Author:  Benjamin Conn
- 
- ==============================================================================
- */
+  ==============================================================================
 
+    RepitchingSingleInstrumentSampleProcessor.cpp
+    Created: 15 Feb 2024 10:11:21am
+    Author:  Benjamin Conn
+
+  ==============================================================================
+*/
+
+#include "RepitchingSingleInstrumentSampleProcessor.h"
 #include "SampleProcessor.h"
 #include <JuceHeader.h>
 #include <rubberband/RubberBandStretcher.h>
@@ -15,7 +16,7 @@
 #include "Note.h"
 
 
-SampleProcessor::SampleProcessor(std::string filePath, int rootMidiNote) : rootMidiNote(rootMidiNote) {
+RepitchingSingleInstrumentSampleProcessor::RepitchingSingleInstrumentSampleProcessor(std::string filePath, int rootMidiNote) : rootMidiNote(rootMidiNote) {
     // Load the audio file
     juce::File file(filePath);
     juce::AudioFormatManager formatManager;
@@ -31,7 +32,7 @@ SampleProcessor::SampleProcessor(std::string filePath, int rootMidiNote) : rootM
     stretcher = std::make_shared<RubberBand::RubberBandStretcher>(44100, 2, RubberBand::RubberBandStretcher::OptionProcessOffline + RubberBand::RubberBandStretcher::Option::OptionPitchHighConsistency + RubberBand::RubberBandStretcher::Option::OptionEngineFiner);
 }
 
-SampleProcessor::SampleProcessor(std::string filePath, int rootMidiNote, std::vector<Note> notes) : rootMidiNote(rootMidiNote) {
+RepitchingSingleInstrumentSampleProcessor::RepitchingSingleInstrumentSampleProcessor(std::string filePath, int rootMidiNote, std::vector<Note> notes) : rootMidiNote(rootMidiNote) {
     juce::File file(filePath);
     juce::AudioFormatManager formatManager;
     formatManager.registerBasicFormats();
@@ -50,7 +51,7 @@ SampleProcessor::SampleProcessor(std::string filePath, int rootMidiNote, std::ve
 }
 
 
-const juce::AudioBuffer<float>& SampleProcessor::getAudioForNoteNumber(int noteNumber) {
+juce::AudioBuffer<float>& RepitchingSingleInstrumentSampleProcessor::getAudioForNoteNumber(int noteNumber) {
     // check if the note exists in the map
     
     // if it does, return the buffer

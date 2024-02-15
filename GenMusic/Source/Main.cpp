@@ -9,11 +9,14 @@
 #include "Song.h"
 #include "Voices.h"
 #include "SampleProcessor.h"
+#include "RepitchingSingleInstrumentSampleProcessor.h"
+#include "MultiInstrumentSampleProcessor.h"
 #include "Utilities.h"
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 #include <numeric>
 #include "WidthProcessor.h"
+#include "GrooveTrackGenerator.h"
 
 
 const double SAMPLE_RATE = 44100.0;
@@ -432,14 +435,18 @@ std::vector<Note> generateMelody(const std::vector<unsigned char> seedForMelody,
 }
 
 
-// TODO bugs: some big jumps in melodes, normalize the note ranges, compression, audio bus, move gain from synth voice to a chain, maybe even abstract out the synthesisers at this point, match output volume to input volume, multiband compression
+// the chance of each potential subdivision being played
+const std::vector<double> bassDrumWeighting = {0.8, 0.15, 0.3, 0.15, 0.4, 0.15, 0.3, 0.15, 0.4, 0.15, 0.3, 0.15, 0.4, 0.15, 0.3, 0.4 };
+const std::vector<double> snareWeighting = {0.8, 0.5, 0.3, 0.5, 0.4, 0.5, 0.3, 0.5, 0.4, 0.5, 0.3, 0.5, 0.4, 0.5, 0.3, 0.5, 0.8, 0.5, 0.3, 0.5, 0.4, 0.5, 0.3, 0.5, 0.4, 0.5, 0.3, 0.5, 0.4, 0.5, 0.3, 0.5 };
+
+// TODO bugs: some big jumps in melodes, normalize the note ranges, compression, audio bus, move gain from synth voice to a chain, maybe even abstract out the synthesisers at this point, match output volume to input volume, multiband compression, clip right at the end of a track??
 int main(int argc, char *argv[]) {
     
     std::vector<unsigned char> seed;
     if (argc > 1) {
-        seed = generateRandomBytes(100, argv[1]);
+        seed = generateRandomBytes(250, argv[1]);
     } else {
-        seed = generateRandomBytes(100, "blessed");
+        seed = generateRandomBytes(250, "blessed");
     }
     
     int index = 0;
@@ -473,7 +480,7 @@ int main(int argc, char *argv[]) {
     
     // 4 because starting notes already used 4 bytes
     const auto melody = generateMelody(std::vector<unsigned char>(seed.begin()+melodyRhythm.first + 4, seed.end()), chords, melodyRhythm.second, melodyStartingNotes, roots);
-    
+   
     std::vector<Note> allMelodyNotes;
     
     for (const auto& note : melody) {
@@ -488,17 +495,27 @@ int main(int argc, char *argv[]) {
             allChordNotes.push_back(note);
         }
     }
+
+    GrooveTrackGenerator bassDrumTrackGenerator(0, LOOPS, BAR_COUNT, std::vector<unsigned char>(seed.begin()+melody.size(), seed.end()), bassDrumWeighting, 8.0, {0.5}, {1});
+    std::vector<Note> bassDrumNotes = bassDrumTrackGenerator.generate();
+    GrooveTrackGenerator snareGenerator(1, LOOPS, BAR_COUNT, std::vector<unsigned char>(seed.begin()+melody.size()+bassDrumNotes.size(), seed.end()), snareWeighting, 8.0, {0.25}, {2});
+    std::vector<Note> snareNotes = snareGenerator.generate();
+    
     
     // TODO the note parameter doesn't really work right
-    std::shared_ptr<SampleProcessor> melodySampleProcessor = std::make_shared<SampleProcessor>("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C4.mp3", 36, allMelodyNotes);
+    std::shared_ptr<SampleProcessor> melodySampleProcessor = std::make_shared<RepitchingSingleInstrumentSampleProcessor>("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C4.mp3", 36, allMelodyNotes);
     
-    std::shared_ptr<SampleProcessor> chordSampleProcessor = std::make_shared<SampleProcessor>("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C2.mp3", 36, allChordNotes);
+    std::shared_ptr<SampleProcessor> chordSampleProcessor = std::make_shared<RepitchingSingleInstrumentSampleProcessor>("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/JPIANO-C2.mp3", 36, allChordNotes);
+    
+    std::map<int, std::string> drumSamples = {{0, "/Users/benjaminconn/Downloads/Pierre Kit 2021 @fivethreesosa/808/808 - cant relate.wav"}, {1,"/Users/benjaminconn/Downloads/Pierre Kit 2021 @fivethreesosa/hat/HAT - basic.wav"}};
+    
+    std::shared_ptr<SampleProcessor> drumSampleProcessor = std::make_shared<MultiInstrumentSampleProcessor>(drumSamples);
     
     juce::Synthesiser melodySynth;
     melodySynth.setCurrentPlaybackSampleRate(SAMPLE_RATE);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 3; ++i) {
         // 4 potential notes played at once
-        melodySynth.addVoice(new SampleVoice(melodySampleProcessor, i, 0.9f));
+        melodySynth.addVoice(new SampleVoice(melodySampleProcessor, i, 0.8f));
     }
     melodySynth.addSound(new DefaultSynthSound());
     
@@ -510,18 +527,26 @@ int main(int argc, char *argv[]) {
     }
     chordsSynth.addSound(new DefaultSynthSound());
     
+    juce::Synthesiser drumSynth;
+    drumSynth.setCurrentPlaybackSampleRate(SAMPLE_RATE);
+    drumSynth.setNoteStealingEnabled(true);
+    for (int i = 0; i < 4; ++i) {
+        drumSynth.addVoice(new SampleVoice(drumSampleProcessor, i, 1.0f));
+    }
+    drumSynth.addSound(new DefaultSynthSound());
+    
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = SAMPLE_RATE;
     spec.maximumBlockSize = 1024;
     spec.numChannels = 2;
 
-    auto processorChain = std::make_unique<juce::dsp::ProcessorChain<juce::dsp::Gain<float>, WidthProcessor, juce::dsp::Chorus<float>, juce::dsp::Reverb>>();
+    auto processorChain = std::make_shared<juce::dsp::ProcessorChain<juce::dsp::Gain<float>, WidthProcessor, juce::dsp::Chorus<float>, juce::dsp::Reverb>>();
     
     processorChain->prepare(spec);
     
     // configure the individual processors
     processorChain->get<0>().setGainLinear(1.0f);
-    processorChain->get<1>().setWidth(1.4f);
+    processorChain->get<1>().setWidth(1.3f);
     
     auto& chorus = processorChain->get<2>();
     
@@ -532,18 +557,19 @@ int main(int argc, char *argv[]) {
     chorus.setMix(0.5f);
     
     juce::dsp::Reverb::Parameters reverbParams;
-    reverbParams.roomSize = 0.7f; // Simulates a medium room
+    reverbParams.roomSize = 0.5f; // Simulates a medium room
     reverbParams.damping = 0.5f;  // Balanced high-frequency decay
-    reverbParams.wetLevel = 0.3f; // Noticeable reverb effect without drowning the signal
-    reverbParams.dryLevel = 0.7f; // Keeps the original signal at full level
+    reverbParams.wetLevel = 0.2f; // Noticeable reverb effect without drowning the signal
+    reverbParams.dryLevel = 0.8f; // Keeps the original signal at full level
     reverbParams.width = 1.0f;    // Full stereo width for a spacious effect
 
     processorChain->get<3>().setParameters(reverbParams);
 
-    auto song = std::make_unique<Song>(bpm, SAMPLE_RATE, std::move(processorChain));
+    auto song = std::make_unique<Song>(bpm, SAMPLE_RATE);
     
-    const auto melodyTrack = std::make_unique<Track>(song.get(), &melodySynth);
-    const auto chordTrack = std::make_unique<Track>(song.get(), &chordsSynth);
+    const auto melodyTrack = std::make_unique<Track>(song.get(), &melodySynth, processorChain);
+    const auto chordTrack = std::make_unique<Track>(song.get(), &chordsSynth, processorChain);
+    const auto drumsTrack = std::make_unique<Track>(song.get(), &drumSynth);
     
     for (auto& note : melody) {
         melodyTrack->addNote(note);
@@ -553,8 +579,17 @@ int main(int argc, char *argv[]) {
         chordTrack->addChord(chord);
     }
     
+    for (auto& note : bassDrumNotes) {
+        drumsTrack->addNote(note);
+    }
+    
+    for (auto& note : snareNotes) {
+        drumsTrack->addNote(note);
+    }
+    
     song->addTrack(melodyTrack.get());
     song->addTrack(chordTrack.get());
+    song->addTrack(drumsTrack.get());
     
     juce::File outputFile("/Users/benjaminconn/workspace/lnrz/gen-music-script/sounds/output-v3.wav");
     

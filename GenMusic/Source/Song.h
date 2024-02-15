@@ -6,7 +6,6 @@
 class Song {
 public:
     Song(double bpm, double sampleRate) : bpm(bpm), sampleRate(sampleRate) {}
-    Song(double bpm, double sampleRate, std::unique_ptr<juce::dsp::ProcessorChain<juce::dsp::Gain<float>, WidthProcessor, juce::dsp::Chorus<float>, juce::dsp::Reverb>> chain) : bpm(bpm), sampleRate(sampleRate), processorChain(std::move(chain)) {}
 
     void addTrack(Track* track);
     double getBPM() const { return bpm; }
@@ -18,5 +17,4 @@ private:
     std::vector<Track*> tracks;
     double bpm;
     double sampleRate; // Set this appropriately
-    std::unique_ptr<juce::dsp::ProcessorChain<juce::dsp::Gain<float>, WidthProcessor, juce::dsp::Chorus<float>, juce::dsp::Reverb>> processorChain;
 };
