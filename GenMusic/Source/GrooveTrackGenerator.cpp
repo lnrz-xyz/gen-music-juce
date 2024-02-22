@@ -14,7 +14,7 @@
 #include <fmt/core.h>
 
 
-GrooveTrackGenerator::GrooveTrackGenerator(int midiNoteNumber, int loops, int bars, std::vector<unsigned char> seed, std::vector<double> weighting, double grooveLength, std::vector<double> subdivisions, std::vector<int> subdivisionWeights) : seed(seed), midiNoteNumber(midiNoteNumber), loops(loops), bars(bars), playWeighting(weighting), grooveLength(grooveLength), subdivisions(subdivisions), subdivisionWeighting(subdivisionWeights) {
+GrooveTrackGenerator::GrooveTrackGenerator(int midiNoteNumber, std::vector<unsigned char> seed, std::vector<double> weighting, double grooveLength, std::vector<double> subdivisions, std::vector<int> subdivisionWeights) : seed(seed), midiNoteNumber(midiNoteNumber), playWeighting(weighting), grooveLength(grooveLength), subdivisions(subdivisions), subdivisionWeighting(subdivisionWeights) {
     // verify that the playWeighting are all chances 0-1
     for (auto& weight : playWeighting) {
         if (weight < 0 || weight > 1) {
@@ -39,19 +39,16 @@ GrooveTrackGenerator::GrooveTrackGenerator(int midiNoteNumber, int loops, int ba
 std::vector<Note> GrooveTrackGenerator::generate() {
     std::vector<Note> notes;
     GrooveTrackContext ctx;
-    std::pair<double, double> subdivisionRangeInclusive = getSubdivisionRangeInclusive();
     
     
-    for (int loop = 0; loop < loops; ++loop ) {
-        for (int bar = 0; bar < bars * 4; bar+=grooveLength) {
+    for (int loop = 0; loop < LOOPS; ++loop ) {
+        for (int bar = 0; bar < BAR_COUNT * 4; bar+=grooveLength) {
             for (double groovePos = 0.0; groovePos < grooveLength; ) {
                 
                 //  int relIndex = static_cast<int>((currentValue / doubleA) * vec.size());
                 int idx = static_cast<int>((groovePos / grooveLength) * playWeighting.size());
-                fmt::print("idx: {}\n", idx);
                 double playChance = playWeighting.at(idx);
-                unsigned char seedVal = seed.at(idx + (loops * grooveLength));
-                fmt::print("seedVal: {}\n", seedVal);
+                unsigned char seedVal = seed.at(idx + (LOOPS * grooveLength));
                 if (ctx.playCompensation > 0.0) {
                     playChance /= ctx.playCompensation; // this is a very simple implementation, we probably want to flesh out what it means to compensate for a note
                 }
@@ -77,16 +74,15 @@ std::vector<Note> GrooveTrackGenerator::generate() {
                         break;
                     }
                 }
-                
+                double compChange = std::max(subToUse, 1.0);
                 if (basicChance(seedVal, playChance)) {
-                    double loc = (loop * bars * 4) + bar + groovePos;
-                    fmt::print("loc: {}\n", loc);
+                    double loc = (loop * BAR_COUNT * 4) + bar + groovePos;
                     notes.push_back(Note(midiNoteNumber, loc, subToUse));
-                    ctx.playCompensation+=std::max(subToUse*2, 1.0);
-                    ctx.subdivisionCompensation[indexOfSubToUse]+=std::max(subToUse*2, 1.0);
+                    ctx.playCompensation+=compChange;
+                    ctx.subdivisionCompensation[indexOfSubToUse]+=compChange;
                 } else {
-                    ctx.playCompensation-=std::max(subToUse*2, 1.0);
-                    ctx.subdivisionCompensation[indexOfSubToUse]-=std::max(subToUse*2, 1.0);
+                    ctx.playCompensation-=compChange;
+                    ctx.subdivisionCompensation[indexOfSubToUse]-=compChange;
                 }
                 
                 groovePos += subToUse;

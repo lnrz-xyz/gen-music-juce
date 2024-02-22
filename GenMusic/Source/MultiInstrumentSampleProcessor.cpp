@@ -32,12 +32,18 @@ MultiInstrumentSampleProcessor::MultiInstrumentSampleProcessor(std::map<int, std
 
 
 
-juce::AudioBuffer<float>& MultiInstrumentSampleProcessor::getAudioForNoteNumber(int noteNumber) {
+// TODO return copy of audio buffer
+juce::AudioBuffer<float> MultiInstrumentSampleProcessor::getAudioForNoteNumber(int noteNumber) {
+    
     // check if the note exists in the map
     auto it = audioSampleBuffers.find(noteNumber);
-    
+
     if (it != audioSampleBuffers.end()) {
-        return it->second;
+        // copy buffer
+        juce::AudioBuffer<float> copyOfBuffer;
+        copyOfBuffer.makeCopyOf(it->second);
+        
+        return copyOfBuffer;
     }
     
     throw std::runtime_error("Note not found");

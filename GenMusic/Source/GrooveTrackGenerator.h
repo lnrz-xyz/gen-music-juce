@@ -13,6 +13,7 @@
 #include <vector>
 #include "Song.h"
 #include <JuceHeader.h>
+#include "NoteGenerator.h"
 
 struct GrooveTrackContext {
     double playCompensation = 0;
@@ -20,9 +21,9 @@ struct GrooveTrackContext {
 };
 
 // TODO convert to just a generator
-class GrooveTrackGenerator {
+class GrooveTrackGenerator : public NoteGenerator {
 public:
-    GrooveTrackGenerator(int midiNoteNumber, int loops, int bars, std::vector<unsigned char> seed, std::vector<double> weighting, double grooveLength, std::vector<double> subdivisions, std::vector<int> subdivisionWeights);
+    GrooveTrackGenerator(int midiNoteNumber, std::vector<unsigned char> seed, std::vector<double> weighting, double grooveLength, std::vector<double> subdivisions, std::vector<int> subdivisionWeights);
     std::vector<Note> generate();
     
     // TODO introduce methods to modify the weighting so that the context of the whole groove can be owned by the machine, for now it can be entirely isolated
@@ -33,8 +34,6 @@ private:
     std::vector<unsigned char> seed;
     
     int midiNoteNumber;
-    int loops;
-    int bars;
     std::vector<double> playWeighting;
     double grooveLength;
     std::vector<double> subdivisions;

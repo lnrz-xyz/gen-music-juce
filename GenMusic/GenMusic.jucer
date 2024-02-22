@@ -4,6 +4,37 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
   <MAINGROUP id="CyJ3w3" name="GenMusic">
     <GROUP id="{907D5FCD-8BE5-ACFE-917D-4FE40B2F7B91}" name="Source">
+      <FILE id="kDeVhi" name="DrumsEffectProcessor.cpp" compile="1" resource="0"
+            file="Source/DrumsEffectProcessor.cpp"/>
+      <FILE id="PTiG0L" name="DrumsEffectProcessor.h" compile="0" resource="0"
+            file="Source/DrumsEffectProcessor.h"/>
+      <FILE id="jJuVm3" name="NoteGenerator.h" compile="0" resource="0" file="Source/NoteGenerator.h"/>
+      <FILE id="uipgMj" name="AudioProcessingBus.cpp" compile="1" resource="0"
+            file="Source/AudioProcessingBus.cpp"/>
+      <FILE id="xDtGaH" name="AudioProcessingBus.h" compile="0" resource="0"
+            file="Source/AudioProcessingBus.h"/>
+      <FILE id="zJW1Y6" name="EffectProcessor.cpp" compile="1" resource="0"
+            file="Source/EffectProcessor.cpp"/>
+      <FILE id="pujFhC" name="EffectProcessor.h" compile="0" resource="0"
+            file="Source/EffectProcessor.h"/>
+      <FILE id="gpg945" name="MelodicComponentsEffectProcessor.cpp" compile="1"
+            resource="0" file="Source/MelodicComponentsEffectProcessor.cpp"/>
+      <FILE id="EtjkCq" name="MelodicComponentsEffectProcessor.h" compile="0"
+            resource="0" file="Source/MelodicComponentsEffectProcessor.h"/>
+      <FILE id="amULRw" name="AudioRenderer.cpp" compile="1" resource="0"
+            file="Source/AudioRenderer.cpp"/>
+      <FILE id="Qo7dOv" name="AudioRenderer.h" compile="0" resource="0" file="Source/AudioRenderer.h"/>
+      <FILE id="hjlSNb" name="MIDIRenderer.cpp" compile="1" resource="0"
+            file="Source/MIDIRenderer.cpp"/>
+      <FILE id="uKMWX5" name="MIDIRenderer.h" compile="0" resource="0" file="Source/MIDIRenderer.h"/>
+      <FILE id="WnDNuI" name="ChordalGenerator.cpp" compile="1" resource="0"
+            file="Source/ChordalGenerator.cpp"/>
+      <FILE id="AA8gxv" name="ChordalGenerator.h" compile="0" resource="0"
+            file="Source/ChordalGenerator.h"/>
+      <FILE id="ZWkyIx" name="MelodicGenerator.cpp" compile="1" resource="0"
+            file="Source/MelodicGenerator.cpp"/>
+      <FILE id="rIcNOf" name="MelodicGenerator.h" compile="0" resource="0"
+            file="Source/MelodicGenerator.h"/>
       <FILE id="lsidSj" name="RepitchingSingleInstrumentSampleProcessor.cpp"
             compile="1" resource="0" file="Source/RepitchingSingleInstrumentSampleProcessor.cpp"/>
       <FILE id="pvbmKf" name="RepitchingSingleInstrumentSampleProcessor.h"
@@ -29,8 +60,6 @@
       <FILE id="N8hcPe" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
       <FILE id="LqKWwh" name="Song.cpp" compile="1" resource="0" file="Source/Song.cpp"/>
       <FILE id="XWiGLZ" name="Song.h" compile="0" resource="0" file="Source/Song.h"/>
-      <FILE id="pwGVOb" name="Track.cpp" compile="1" resource="0" file="Source/Track.cpp"/>
-      <FILE id="uiO3NA" name="Track.h" compile="0" resource="0" file="Source/Track.h"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>

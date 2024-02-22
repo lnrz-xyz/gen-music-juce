@@ -1,19 +1,18 @@
 /*
   ==============================================================================
 
-    SampleProcessor.h
-    Created: 2 Feb 2024 9:00:09pm
+    EffectProcessor.h
+    Created: 21 Feb 2024 11:51:35am
     Author:  Benjamin Conn
 
   ==============================================================================
 */
 
 #pragma once
-
 #include <JuceHeader.h>
 
-class SampleProcessor {
+class EffectProcessor {
 public:
-    virtual ~SampleProcessor() = default;
-    virtual juce::AudioBuffer<float> getAudioForNoteNumber(int noteNumber) = 0;
+    virtual ~EffectProcessor() = default;
+    virtual void process(juce::AudioBuffer<float>& buffer) = 0;
 };

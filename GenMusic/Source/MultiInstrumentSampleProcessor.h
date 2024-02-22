@@ -17,7 +17,7 @@ class MultiInstrumentSampleProcessor : public SampleProcessor {
 public:
     
     MultiInstrumentSampleProcessor(std::map<int, std::string> filePaths);
-    juce::AudioBuffer<float>& getAudioForNoteNumber(int noteNumber) override;
+    juce::AudioBuffer<float> getAudioForNoteNumber(int noteNumber) override;
     
 private:
     // sample buffers

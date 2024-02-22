@@ -1,19 +1,19 @@
 /*
   ==============================================================================
 
-    SampleProcessor.h
-    Created: 2 Feb 2024 9:00:09pm
+    DrumsEffectProcessor.h
+    Created: 21 Feb 2024 6:39:30pm
     Author:  Benjamin Conn
 
   ==============================================================================
 */
 
 #pragma once
+#include "EffectProcessor.h"
 
-#include <JuceHeader.h>
 
-class SampleProcessor {
+class DrumsEffectProcessor : public EffectProcessor {
 public:
-    virtual ~SampleProcessor() = default;
-    virtual juce::AudioBuffer<float> getAudioForNoteNumber(int noteNumber) = 0;
+    
+    void process(juce::AudioBuffer<float>& buffer) override;
 };

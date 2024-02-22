@@ -23,7 +23,7 @@ public:
     RepitchingSingleInstrumentSampleProcessor(std::string filePath, int rootMidiNote);
     RepitchingSingleInstrumentSampleProcessor(std::string filePath, int rootMidiNote, std::vector<Note> notes);
     
-    juce::AudioBuffer<float>& getAudioForNoteNumber(int noteNumber) override;
+    juce::AudioBuffer<float> getAudioForNoteNumber(int noteNumber) override;
 private:
     // sample buffers
     juce::AudioBuffer<float> originalAudioSampleBuffer;

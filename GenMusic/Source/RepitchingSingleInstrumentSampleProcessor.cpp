@@ -51,7 +51,7 @@ RepitchingSingleInstrumentSampleProcessor::RepitchingSingleInstrumentSampleProce
 }
 
 
-juce::AudioBuffer<float>& RepitchingSingleInstrumentSampleProcessor::getAudioForNoteNumber(int noteNumber) {
+juce::AudioBuffer<float> RepitchingSingleInstrumentSampleProcessor::getAudioForNoteNumber(int noteNumber) {
     // check if the note exists in the map
     
     // if it does, return the buffer
@@ -60,7 +60,6 @@ juce::AudioBuffer<float>& RepitchingSingleInstrumentSampleProcessor::getAudioFor
     auto it = reprocessedAudioSampleBuffers.find(noteNumber);
 
     if (it != reprocessedAudioSampleBuffers.end()) {
-        fmt::print("Note {} already exists\n", noteNumber);
         return reprocessedAudioSampleBuffers[noteNumber];
     }
     

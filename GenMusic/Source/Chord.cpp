@@ -13,16 +13,6 @@
 #include "Utilities.h"
 
 
-juce::MidiMessageSequence Chord::toMidiSequence(double bpm, double sampleRate) const {
-    juce::MidiMessageSequence sequence;
-    for (const auto& note : notes) {
-        auto noteSequence = note.toMidiSequence(bpm,sampleRate);
-        sequence.addSequence(noteSequence, 0, 0, noteSequence.getEndTime());
-    }
-    return sequence;
-}
-
-
 void Chord::addNotes(std::vector<Note> newNotes) {
     for (const auto& note : newNotes) {
         notes.push_back(note);

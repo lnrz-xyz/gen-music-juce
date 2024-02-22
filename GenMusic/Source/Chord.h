@@ -49,8 +49,6 @@ public:
     
     void addNotes(std::vector<Note> notes);
     
-    juce::MidiMessageSequence toMidiSequence(double bpm, double sampleRate) const;
-    
     std::vector<Note> getNotes() const {
         return notes;
     }
